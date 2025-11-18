@@ -9,7 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto'; // Node.js 내장 crypto 모듈 사용 (ESM 호환성 문제 해결)
 import { EmailService } from '../email/email.service';
 import { formatEther, parseEther } from 'ethers';
 
@@ -39,8 +39,8 @@ export class AuthService {
     const saltRounds = 10; //해시 반복 횟수
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // 이메일 인증 토큰 생성 (UUID 사용)
-    const verificationToken = uuidv4();
+    // 이메일 인증 토큰 생성 (Node.js 내장 crypto.randomUUID 사용)
+    const verificationToken = randomUUID();
     const verificationExpires = new Date();
     verificationExpires.setHours(verificationExpires.getHours() + 2); // 2시간 후 만료
 
@@ -158,8 +158,8 @@ export class AuthService {
       throw new BadRequestException('이미 인증된 이메일입니다.');
     }
 
-    // 새 토큰 생성
-    const verificationToken = uuidv4();
+    // 새 토큰 생성 (Node.js 내장 crypto.randomUUID 사용)
+    const verificationToken = randomUUID();
     const verificationExpires = new Date();
     verificationExpires.setHours(verificationExpires.getHours() + 2);
 
