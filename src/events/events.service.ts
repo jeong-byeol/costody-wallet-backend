@@ -49,7 +49,10 @@ export class EventsService implements OnModuleInit {
 
   // 모듈 초기화 시 이벤트 리스너 시작
   async onModuleInit() {
+    // userKey 매핑 업데이트 (실패해도 계속 진행)
     await this.updateUserKeyMap();
+    
+    // 이벤트 리스너 시작
     await this.startEventListeners();
 
     // 주기적으로 userKey 매핑 업데이트 (5분마다)
@@ -76,7 +79,14 @@ export class EventsService implements OnModuleInit {
       });
 
       this.logger.log(`UserKey 매핑 업데이트 완료: ${this.userKeyToEmailMap.size}명`);
-    } catch (error) {
+    } catch (error: any) {
+      // 테이블이 존재하지 않는 경우 (마이그레이션 미실행)
+      if (error?.code === 'P2021') {
+        this.logger.warn(
+          '데이터베이스 테이블이 존재하지 않습니다. 마이그레이션을 실행해주세요: npx prisma migrate deploy',
+        );
+        return;
+      }
       this.logger.error('UserKey 매핑 업데이트 실패:', error);
     }
   }

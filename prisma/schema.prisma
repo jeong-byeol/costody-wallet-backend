@@ -12,12 +12,12 @@ model users {
   email                      String                 @unique @db.Citext
   password                   String
   role                       user_role              @default(user)
-  status                     user_status            @default(active)
   balance                    Decimal                @default(0) @db.Decimal(36, 18)
   created_at                 DateTime               @default(now()) @db.Timestamptz(6)
   email_verified             Boolean?               @default(false)
   email_verification_token   String?                @unique @db.VarChar(255)
   email_verification_expires DateTime?              @db.Timestamp(6)
+  status                     user_status            @default(active)
   transactions               transactions[]
   withdrawal_whitelists      withdrawal_whitelist[]
 
@@ -26,21 +26,21 @@ model users {
 }
 
 model transactions {
-  txhash            String    @id @db.VarChar(100)
-  user_id           String    @db.Uuid
+  txhash            String       @id @db.VarChar(100)
+  user_id           String       @db.Uuid
   status            tx_status
-  direction         tx_direction @default(IN)
   blocknumber       BigInt?
-  blockhash         String?   @db.VarChar(100)
-  blocktimestamp    DateTime? @db.Timestamp(6)
-  from_address      String    @db.VarChar(100)
-  to_address        String    @db.VarChar(100)
-  amount            Decimal   @db.Decimal(38, 18)
+  blockhash         String?      @db.VarChar(100)
+  blocktimestamp    DateTime?    @db.Timestamp(6)
+  from_address      String       @db.VarChar(100)
+  to_address        String       @db.VarChar(100)
+  amount            Decimal      @db.Decimal(38, 18)
   gasused           BigInt?
-  effectivegasprice Decimal?  @db.Decimal(38, 18)
-  feepaid           Decimal?  @db.Decimal(38, 18)
-  createdat         DateTime? @default(now()) @db.Timestamp(6)
-  users             users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  effectivegasprice Decimal?     @db.Decimal(38, 18)
+  feepaid           Decimal?     @db.Decimal(38, 18)
+  createdat         DateTime?    @default(now()) @db.Timestamp(6)
+  direction         tx_direction @default(IN)
+  users             users        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([from_address], map: "idx_transactions_from_address")
   @@index([status], map: "idx_transactions_status")
@@ -61,6 +61,24 @@ model withdrawal_whitelist {
   @@unique([user_id, to_address], map: "uniq_user_whitelist")
   @@index([user_id], map: "idx_user_whitelist_user")
   @@index([to_address], map: "idx_user_whitelist_address")
+}
+
+model deposit_withdraw_events {
+  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type             event_type
+  email            String?    @db.Citext
+  from_address     String?    @db.VarChar(100)
+  to_address       String?    @db.VarChar(100)
+  amount           Decimal    @db.Decimal(38, 18)
+  timestamp        BigInt
+  transaction_hash String     @unique @db.VarChar(100)
+  block_number     BigInt
+  created_at       DateTime   @default(now()) @db.Timestamptz(6)
+
+  @@index([type], map: "idx_events_type")
+  @@index([email], map: "idx_events_email")
+  @@index([timestamp], map: "idx_events_timestamp")
+  @@index([transaction_hash], map: "idx_events_tx_hash")
 }
 
 enum user_role {
@@ -87,22 +105,4 @@ enum tx_direction {
 enum event_type {
   DEPOSIT
   WITHDRAW
-}
-
-model deposit_withdraw_events {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  type            event_type
-  email           String?   @db.Citext
-  from_address    String?   @db.VarChar(100) // 입금만: 송금자 주소
-  to_address      String?   @db.VarChar(100) // 출금만: 수취인 주소
-  amount          Decimal   @db.Decimal(38, 18) // ETH 단위
-  timestamp       BigInt    // 블록 타임스탬프 (초 단위)
-  transaction_hash String   @unique @db.VarChar(100) // 중복 방지용
-  block_number    BigInt
-  created_at      DateTime  @default(now()) @db.Timestamptz(6)
-
-  @@index([type], map: "idx_events_type")
-  @@index([email], map: "idx_events_email")
-  @@index([timestamp], map: "idx_events_timestamp")
-  @@index([transaction_hash], map: "idx_events_tx_hash")
 }
