@@ -11,7 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { stringToHex } from 'viem';
 import omnibusAbi from '../abi/omnibusWallet.json';
-import { Prisma } from '@prisma/client';
+
 
 // 트랜잭션 처리 비즈니스 로직을 담당하는 서비스
 @Injectable()
@@ -410,12 +410,13 @@ export class TxService {
       blockNumber: string | null;
     }>
   > {
-    const where: Prisma.transactionsWhereInput = {
+    // Prisma where 조건 객체 생성 (타입은 Prisma가 자동 추론)
+    const where: any = {
       user_id: userId,
     };
 
     if (direction) {
-      (where as any).direction = direction;
+      where.direction = direction;
     }
 
     const transactions = await this.prismaService.transactions.findMany({
