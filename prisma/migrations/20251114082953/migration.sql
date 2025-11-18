@@ -1,3 +1,6 @@
+-- CreateExtension: citext 확장 생성 (대소문자 구분 없는 텍스트 타입)
+CREATE EXTENSION IF NOT EXISTS "citext";
+
 -- CreateEnum
 CREATE TYPE "user_role" AS ENUM ('user', 'admin');
 
