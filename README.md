@@ -147,7 +147,10 @@ FRONTEND_URL="http://localhost:3001"
 BACKEND_URL="http://localhost:3000"
 
 # 블록체인 설정
-RPC_URL="https://mainnet.infura.io/v3/YOUR_PROJECT_ID"
+# WebSocket 사용 권장 (wss://) - 이벤트 리스너 필터 만료 문제 방지
+RPC_URL="wss://mainnet.infura.io/ws/v3/YOUR_PROJECT_ID"
+# 또는 HTTP (필터 만료 에러가 발생할 수 있음)
+# RPC_URL="https://mainnet.infura.io/v3/YOUR_PROJECT_ID"
 OMNIBUS_CONTRACT="0x..."
 COLD_VAULT_CONTRACT="0x..."
 POLICY_GUARD_CONTRACT="0x..."

@@ -14,6 +14,7 @@ export class EventsService implements OnModuleInit {
   private userKeyToEmailMap: Map<string, string> = new Map();
   private readonly logger = new Logger(EventsService.name);
   private isListening = false;
+  private reconnectTimer?: NodeJS.Timeout; // 재연결 타이머
 
   constructor(
     private readonly prismaService: PrismaService,
@@ -38,13 +39,31 @@ export class EventsService implements OnModuleInit {
       throw new Error('SIGNER_PRIVATE_KEY 환경변수가 설정되지 않았습니다.');
     }
 
-    this.provider = new ethers.JsonRpcProvider(rpcUrl);
+    // WebSocket URL이면 WebSocketProvider 사용, 아니면 JsonRpcProvider 사용
+    if (rpcUrl.startsWith('ws://') || rpcUrl.startsWith('wss://')) {
+      this.provider = new ethers.WebSocketProvider(rpcUrl) as any;
+      this.logger.log('WebSocket RPC 연결 사용 (필터 만료 문제 해결)');
+    } else {
+      this.provider = new ethers.JsonRpcProvider(rpcUrl);
+      this.logger.warn('HTTP RPC 사용 중 - WebSocket 사용을 권장합니다 (wss://)');
+    }
+    
     const signer = new ethers.Wallet(ownerPrivateKey, this.provider);
     this.omnibusContract = new ethers.Contract(
       contractAddress,
       omnibusAbi,
       signer,
     );
+
+    // Provider 에러 핸들링
+    this.provider.on('error', (error) => {
+      this.logger.error('Provider 에러 발생:', error);
+      // 필터 만료 에러면 이벤트 리스너 재시작
+      if (error?.error?.code === -32001 || error?.code === 'UNKNOWN_ERROR') {
+        this.logger.warn('필터 만료 감지, 이벤트 리스너 재시작 시도...');
+        this.restartEventListeners();
+      }
+    });
   }
 
   // 모듈 초기화 시 이벤트 리스너 시작
@@ -312,6 +331,34 @@ export class EventsService implements OnModuleInit {
       }
       throw error;
     }
+  }
+
+  // 이벤트 리스너 재시작
+  private async restartEventListeners() {
+    // 이미 재연결 타이머가 있으면 무시 (중복 방지)
+    if (this.reconnectTimer) {
+      return;
+    }
+
+    this.logger.log('이벤트 리스너 재시작 예약 (10초 후)...');
+    
+    // 기존 리스너 중지
+    await this.stopEventListeners();
+
+    // 10초 후 재시작
+    this.reconnectTimer = setTimeout(async () => {
+      try {
+        this.logger.log('이벤트 리스너 재시작 중...');
+        await this.startEventListeners();
+        this.reconnectTimer = undefined;
+        this.logger.log('이벤트 리스너 재시작 완료');
+      } catch (error) {
+        this.logger.error('이벤트 리스너 재시작 실패:', error);
+        this.reconnectTimer = undefined;
+        // 30초 후 다시 시도
+        setTimeout(() => this.restartEventListeners(), 30000);
+      }
+    }, 10000);
   }
 
   // 이벤트 리스너 중지
